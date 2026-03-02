@@ -1,35 +1,28 @@
 'use server'
-
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 
-// Funkcja pomocnicza do tworzenia klienta Supabase wewnątrz akcji
-async function getSupabaseClient() {
-  const cookieStore = await cookies() // FIX: Obsługa asynchronicznych ciasteczek
-  
+async function getSupabase() {
+  const cookieStore = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name: string) { return cookieStore.get(name)?.value },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: '', ...options })
-        },
+        set(name: string, value: string, options: CookieOptions) { cookieStore.set({ name, value, ...options }) },
+        remove(name: string, options: CookieOptions) { cookieStore.set({ name, value: '', ...options }) },
       },
     }
   )
 }
 
-// 1. Logowanie
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
-  const supabase = await getSupabaseClient()
+  const supabase = await getSupabase()
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
@@ -40,26 +33,38 @@ export async function login(formData: FormData) {
   redirect('/admin')
 }
 
-// 2. Wylogowanie
 export async function logout() {
-  const supabase = await getSupabaseClient()
+  const supabase = await getSupabase()
   await supabase.auth.signOut()
   redirect('/login')
 }
 
-// 3. Zmiana statusu zgłoszenia
-export async function updateTicketStatus(id: number, newStatus: string) {
-  const supabase = await getSupabaseClient()
+export async function deleteTicket(id: number) {
+  const supabase = await getSupabase()
+  await supabase.from('tickets').delete().eq('id', id)
+  revalidatePath('/admin')
+}
+
+export async function updateTicketWithComment(id: number, status: string, comment: string) {
+  const supabase = await getSupabase()
   
-  const { error } = await supabase
+  // Pobieramy obecny opis, żeby dokleić do niego komentarz technika
+  const { data: ticket } = await supabase.from('tickets').select('description').eq('id', id).single()
+  const currentDescription = ticket?.description || ""
+  
+  // Jeśli jest komentarz, doklejamy go ładnie na dole
+  const newDescription = comment 
+    ? `${currentDescription}\n\n[NOTATKA AGENTA]: ${comment}\n---` 
+    : currentDescription
+
+  await supabase
     .from('tickets')
-    .update({ status: newStatus })
+    .update({ 
+      status: status,
+      description: newDescription
+    })
     .eq('id', id)
 
-  if (error) {
-    console.error("Błąd aktualizacji:", error.message)
-    return { error: error.message }
-  }
-
-  return { success: true }
+  revalidatePath(`/admin/tickets/${id}`)
+  revalidatePath('/admin')
 }
