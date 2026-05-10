@@ -2,8 +2,11 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase"; 
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // 1. DODANO: Import routera do przekierowań
 
 export default function Home() {
+  const router = useRouter(); // 2. DODANO: Inicjalizacja routera
+
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
@@ -15,24 +18,25 @@ export default function Home() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const { error } = await supabase.from("tickets").insert([
+    // 3. ZMIANA: Dodano .select().single() aby pobrać ID utworzonego rekordu
+    const { data, error } = await supabase.from("tickets").insert([
       {
-        customer_email: email,
+        customer_email: email, // Upewnij się, że w bazie kolumna nazywa się customer_email (tak jak pisałeś)
         subject: subject,
         description: description,
         category: category,
         phone_number: phone,
-        status: "new"
+        status: "AI_OPERATED" // 4. ZMIANA: Od razu ustawiamy status na AI_OPERATED
       }
-    ]);
+    ]).select().single(); 
 
     if (error) {
       alert("Błąd wysyłania: " + error.message);
-    } else {
-      alert("Zgłoszenie przyjęte. Technik zajmie się sprawą.");
-      setEmail(""); setSubject(""); setDescription(""); setPhone("");
+      setIsSubmitting(false);
+    } else if (data) {
+      // 5. ZMIANA: Zamiast alertu, płynnie przenosimy użytkownika do czatu!
+      router.push(`/chat/${data.id}`);
     }
-    setIsSubmitting(false);
   };
 
   return (
@@ -99,11 +103,8 @@ export default function Home() {
             />
           </div>
 
-          {/* ZMIANA KOLORU PRZYCISKU */}
           <button 
             type="submit" disabled={isSubmitting}
-            // Zmieniono 'bg-slate-900' na 'bg-blue-600' i 'hover:bg-sky-500' na 'hover:bg-blue-700'
-            // aby pasował do przycisku logowania
             className="w-full bg-blue-600 text-white font-black py-5 rounded-[22px] hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all disabled:bg-slate-300 transform active:scale-95 mt-4"
           >
             {isSubmitting ? "Przesyłanie..." : "Wyślij zgłoszenie IT 🚀"}
@@ -111,7 +112,7 @@ export default function Home() {
         </form>
 
         <footer className="mt-12 text-center border-t border-slate-50 pt-8">
-          <Link href="/login" className="text-[10px] font-black text-slate-300 hover:text-blue-600 uppercase tracking-[0.2em] transition-all">
+          <Link href="/admin" className="text-[10px] font-black text-slate-300 hover:text-blue-600 uppercase tracking-[0.2em] transition-all">
             Logowanie dla personelu IT
           </Link>
         </footer>
