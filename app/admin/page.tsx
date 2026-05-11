@@ -72,12 +72,17 @@ export default function AdminDashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-          <button className="relative p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors border border-slate-200">
+          
+
+          <button 
+            onClick={() => setActiveFilter("NEEDS_ATTENTION")} // Kliknięcie dzwonka aktywuje filtr "Wymaga uwagi"
+            className="relative p-2 text-slate-400 hover:text-red-600 bg-slate-50 border border-slate-200 rounded-full transition-all">
             <span className="material-symbols-outlined">notifications</span>
             {tickets.some(t => t.needs_attention && t.status !== TICKET_STATUS.CLOSED) && (
               <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
             )}
           </button>
+
         </div>
       </header>
 
