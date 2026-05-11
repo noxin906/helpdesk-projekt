@@ -13,13 +13,19 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pl" suppressHydrationWarning>
-      {/* Dodajemy dark:bg-slate-950 i dark:text-slate-100 */}
-      <body className={`${inter.className} bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <head>
+        {/* GLOBALNY IMPORT IKON - to naprawia "brzydkie" przyciski po stronie klienta */}
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" 
+          rel="stylesheet" 
+        />
+        <style dangerouslySetInnerHTML={{__html: `.material-symbols-outlined { vertical-align: middle; }`}} />
+      </head>
+      <body className={`${inter.className} bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300`}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
         </ThemeProvider>
       </body>
     </html>
   );
 }
-
