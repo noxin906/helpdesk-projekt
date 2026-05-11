@@ -16,7 +16,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
   const [comments, setComments] = useState<TicketComment[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Stany dla panelu komentarzy
   const [activeTab, setActiveTab] = useState<TabFilter>("ALL");
   const [replyText, setReplyText] = useState("");
   const [isInternalNote, setIsInternalNote] = useState(false);
@@ -27,7 +26,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
   }, [ticketId]);
 
   const fetchData = async () => {
-    // Pobieramy bilet i komentarze jednocześnie
     const [ticketRes, commentsRes] = await Promise.all([
       supabase.from("tickets").select("*").eq("id", ticketId).single(),
       supabase.from("ticket_comments").select("*").eq("ticket_id", ticketId).order("created_at", { ascending: true })
@@ -43,7 +41,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
     if (!error && ticket) setTicket({ ...ticket, status: newStatus });
   };
 
-  // Funkcja w pełni zapisująca dane do bazy
   const handleSendReply = async () => {
     if (!replyText.trim() || !ticket) return;
     setIsSubmitting(true);
@@ -52,7 +49,7 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
       ticket_id: ticket.id,
       content: replyText,
       is_public: !isInternalNote,
-      author_email: "technik@helpdesk.pl" // Tu docelowo wpadnie zalogowany admin
+      author_email: "technik@helpdesk.pl"
     };
 
     const { data, error } = await supabase.from("ticket_comments").insert([newComment]).select().single();
@@ -74,7 +71,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
   return (
     <div className="flex-grow relative pb-40 bg-slate-50 min-h-screen">
       
-      {/* TopNavBar */}
       <header className="bg-white border-b border-slate-200 flex justify-between items-center w-full px-6 py-3 sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push("/admin")} className="text-slate-400 hover:text-blue-600 transition">
@@ -93,7 +89,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
         </div>
       </header>
 
-      {/* Ticket Banner */}
       <section className="bg-white px-8 py-8 border-b border-slate-200">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
@@ -109,7 +104,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
         </div>
       </section>
 
-      {/* Quick Action Bar (Filtry Oszy Czasu) */}
       <div className="sticky top-[61px] bg-slate-50/90 backdrop-blur-md z-30 border-b border-slate-200 px-8 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
@@ -121,9 +115,19 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
           <div className="flex items-center gap-3">
             {ticket.status !== TICKET_STATUS.CLOSED && (
               <>
-                <button onClick={() => updateStatus(TICKET_STATUS.IN_PROGRESS)} className="px-4 py-2 border border-slate-200 rounded-lg bg-white text-sm font-semibold text-slate-700 hover:border-blue-600 transition-all shadow-sm">
-                  Przejmij sprawę
+                {/* ZMODYFIKOWANY ZIELONY PRZYCISK */}
+                <button 
+                  onClick={() => updateStatus(TICKET_STATUS.IN_PROGRESS)} 
+                  disabled={ticket.status === TICKET_STATUS.IN_PROGRESS}
+                  className={`px-4 py-2 border rounded-lg text-sm font-bold transition-all shadow-sm ${
+                    ticket.status === TICKET_STATUS.IN_PROGRESS 
+                      ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed" 
+                      : "bg-green-600 border-green-600 text-white hover:bg-green-700 active:scale-95"
+                  }`}
+                >
+                  {ticket.status === TICKET_STATUS.IN_PROGRESS ? "✓ Sprawa przejęta" : "Przejmij sprawę"}
                 </button>
+
                 <button onClick={() => updateStatus(TICKET_STATUS.CLOSED)} className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-md active:scale-95">
                   Rozwiąż zgłoszenie
                 </button>
@@ -133,10 +137,8 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      {/* Main Timeline Feed */}
       <div className="max-w-4xl mx-auto px-8 pt-8 space-y-6 relative before:absolute before:left-[52px] before:top-0 before:bottom-0 before:w-0.5 before:bg-slate-200 before:z-0">
         
-        {/* 1. Oryginalne zgłoszenie użytkownika */}
         {(activeTab === "ALL" || activeTab === "PUBLIC") && (
           <div className="relative flex gap-6 z-10">
             <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 border-4 border-slate-50 shadow-sm">
@@ -154,7 +156,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
           </div>
         )}
 
-        {/* 2. Raport od Sztucznej Inteligencji (Jako notatka wewnętrzna) */}
         {ticket.ai_notes && (activeTab === "ALL" || activeTab === "INTERNAL") && (
           <div className="relative flex gap-6 z-10">
             <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 border-4 border-slate-50 shadow-sm">
@@ -175,7 +176,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
           </div>
         )}
 
-        {/* 3. Komentarze z Bazy Danych */}
         {comments.filter(c => activeTab === "ALL" || (activeTab === "PUBLIC" && c.is_public) || (activeTab === "INTERNAL" && !c.is_public)).map((comment) => (
           <div key={comment.id} className="relative flex gap-6 z-10">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-4 border-slate-50 shadow-sm ${comment.is_public ? "bg-slate-700 text-white" : "bg-amber-400 text-amber-900"}`}>
@@ -197,11 +197,9 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
         ))}
       </div>
 
-      {/* Floating Footer Response Area */}
       {ticket.status !== TICKET_STATUS.CLOSED && (
         <footer className="fixed bottom-0 left-60 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
           <div className="max-w-4xl mx-auto">
-            {/* Przełącznik Notatka/Odpowiedź */}
             <div className="flex items-center gap-2 mb-3">
               <button onClick={() => setIsInternalNote(false)} className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${!isInternalNote ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100"}`}>
                 <span className="material-symbols-outlined text-[16px]">edit</span>
@@ -213,7 +211,6 @@ export default function TicketDetails({ params }: { params: Promise<{ id: string
               </button>
             </div>
 
-            {/* Pole tekstowe */}
             <div className="flex items-end gap-4">
               <div className="flex-grow relative">
                 <textarea 

@@ -1,4 +1,14 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    /* Płynne przejście kolorów przy zmianie motywu */
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 300ms;
+  }
+}
+
 
 :root {
   --background: #ffffff;
